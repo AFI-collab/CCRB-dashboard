@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCRB Live Dashboard — Applied Flooring, Inc.</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Barlow+Condensed:wght@300;400;600;700;900&family=Barlow:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#0b0f14; --surface:#111820; --surface2:#19222e; --border:#1e2d3d;
+  --accent:#f5a623; --accent2:#00c9a7; --accent3:#4a9eff;
+  --danger:#ff5c5c; --text:#e8edf2; --muted:#5a7a96; --label:#8aabb8;
+  --yellow-alert:rgba(245,166,35,0.12); --red-alert:rgba(255,92,92,0.12);
+  --green-ok:rgba(0,201,167,0.08);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Barlow',sans-serif;font-weight:300;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(74,158,255,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(74,158,255,0.03) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:28px 24px 60px}
+
+/* HEADER */
+header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:28px;padding-bottom:20px;border-bottom:1px solid var(--border)}
+.eyebrow{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+h1{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:clamp(26px,3.5vw,44px);line-height:1;color:var(--text)}
+h1 span{color:var(--accent)}
+.sub{font-size:12px;color:var(--muted);margin-top:5px;font-family:'DM Mono',monospace}
+.header-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.status-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(0,201,167,0.1);border:1px solid rgba(0,201,167,0.3);border-radius:4px;padding:5px 12px;font-family:'DM Mono',monospace;font-size:10px;color:var(--accent2);letter-spacing:1px;text-transform:uppercase}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+.last-updated{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+
+/* TABS */
+.tabs{display:flex;gap:4px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding:8px 16px;cursor:pointer;color:var(--muted);border:1px solid transparent;border-bottom:none;border-radius:4px 4px 0 0;transition:all 0.2s;position:relative;top:1px}
+.tab:hover{color:var(--label)}
+.tab.active{color:var(--accent);border-color:var(--border);background:var(--surface);border-bottom-color:var(--surface)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* ALERT BANNER */
+.alert-banner{display:flex;align-items:flex-start;gap:12px;padding:14px 18px;border-radius:6px;margin-bottom:20px;border-left:3px solid}
+.alert-banner.red{background:var(--red-alert);border-color:var(--danger)}
+.alert-banner.yellow{background:var(--yellow-alert);border-color:var(--accent)}
+.alert-banner.green{background:var(--green-ok);border-color:var(--accent2)}
+.alert-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.alert-title{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px}
+.alert-body{font-size:12px;color:var(--label);line-height:1.5}
+
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:18px 20px;position:relative;overflow:hidden;opacity:0;transform:translateY(16px);animation:fadeUp 0.5s ease forwards}
+@keyframes fadeUp{to{opacity:1;transform:translateY(0)}}
+.kpi:nth-child(1){animation-delay:.05s}.kpi:nth-child(2){animation-delay:.1s}.kpi:nth-child(3){animation-delay:.15s}.kpi:nth-child(4){animation-delay:.2s}.kpi:nth-child(5){animation-delay:.25s}
+.kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.kpi.gold::after{background:var(--accent)}.kpi.teal::after{background:var(--accent2)}.kpi.blue::after{background:var(--accent3)}.kpi.red::after{background:var(--danger)}
+.kpi-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.kpi-value{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:26px;line-height:1;letter-spacing:-0.5px}
+.kpi-value.gold{color:var(--accent)}.kpi-value.teal{color:var(--accent2)}.kpi-value.blue{color:var(--accent3)}.kpi-value.red{color:var(--danger)}
+.kpi-sub{font-size:10px;color:var(--muted);margin-top:5px}
+.progress-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-top:10px}
+.progress-fill{height:100%;border-radius:2px}
+
+/* GRID LAYOUTS */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;margin-bottom:18px}
+.grid-65{display:grid;grid-template-columns:1.6fr 1fr;gap:18px;margin-bottom:18px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:22px;opacity:0;transform:translateY(10px);animation:fadeUp 0.5s ease forwards}
+.card:nth-child(1){animation-delay:.3s}.card:nth-child(2){animation-delay:.35s}.card:nth-child(3){animation-delay:.4s}
+.card-title{font-family:'Barlow Condensed',sans-serif;font-weight:600;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--label);margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.card-title-left{display:flex;align-items:center;gap:8px}
+.card-title-left::before{content:'';display:block;width:3px;height:13px;border-radius:2px}
+.gold .card-title-left::before,.card-title.gold::before{background:var(--accent)}
+.teal .card-title-left::before,.card-title.teal::before{background:var(--accent2)}
+.blue .card-title-left::before,.card-title.blue::before{background:var(--accent3)}
+.card-title::before{content:'';display:block;width:3px;height:13px;border-radius:2px}
+.card-title.gold::before{background:var(--accent)}.card-title.teal::before{background:var(--accent2)}.card-title.blue::before{background:var(--accent3)}
+canvas{max-height:230px}
+
+/* BURN RATE BARS */
+.burn-item{margin-bottom:16px}
+.burn-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.burn-label{font-size:12px;font-weight:500}
+.burn-meta{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.burn-track{height:8px;background:var(--border);border-radius:4px;overflow:visible;position:relative}
+.burn-bar{height:100%;border-radius:4px;transition:width 1.2s cubic-bezier(0.4,0,0.2,1);position:relative}
+.burn-billing-marker{position:absolute;top:-4px;height:16px;width:2px;background:rgba(255,255,255,0.6);border-radius:1px;transition:left 1.2s cubic-bezier(0.4,0,0.2,1)}
+.burn-billing-marker::after{content:'billing';position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-family:'DM Mono',monospace;font-size:7px;color:rgba(255,255,255,0.5);white-space:nowrap}
+.status-ok{color:var(--accent2)}.status-warn{color:var(--accent)}.status-danger{color:var(--danger)}
+.pill{display:inline-block;padding:2px 8px;border-radius:3px;font-family:'DM Mono',monospace;font-size:9px;font-weight:500}
+.pill-ok{background:rgba(0,201,167,0.15);color:var(--accent2)}
+.pill-warn{background:rgba(245,166,35,0.15);color:var(--accent)}
+.pill-danger{background:rgba(255,92,92,0.15);color:var(--danger)}
+
+/* DATA TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:11px}
+.data-table th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);padding:0 10px 8px;text-align:right;border-bottom:1px solid var(--border)}
+.data-table th:first-child{text-align:left}
+.data-table td{padding:10px;border-bottom:1px solid rgba(30,45,61,0.5);text-align:right;font-size:11px}
+.data-table td:first-child{text-align:left;font-weight:500}
+.data-table tr:last-child td{border-bottom:none;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:12px;color:var(--accent);border-top:1px solid var(--border);padding-top:12px}
+.data-table tr.flag-warn td{background:rgba(245,166,35,0.05)}
+.data-table tr.flag-danger td{background:rgba(255,92,92,0.05)}
+
+/* EDIT PANEL */
+.edit-section{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:16px;margin-bottom:16px}
+.edit-section h3{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+.edit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.edit-field{display:flex;flex-direction:column;gap:4px}
+.edit-field label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.edit-field input{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:7px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:11px;outline:none;transition:border-color 0.2s}
+.edit-field input:focus{border-color:var(--accent3)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:4px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:none;transition:all 0.2s}
+.btn-primary{background:var(--accent3);color:var(--bg);font-weight:500}
+.btn-primary:hover{background:#6bb5ff}
+.btn-secondary{background:var(--surface2);color:var(--label);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--label);color:var(--text)}
+.btn-success{background:var(--accent2);color:var(--bg);font-weight:500}
+.save-msg{font-family:'DM Mono',monospace;font-size:9px;color:var(--accent2);opacity:0;transition:opacity 0.3s}
+.save-msg.show{opacity:1}
+
+/* AI CHAT */
+.chat-wrap{display:flex;flex-direction:column;height:420px}
+.chat-messages{flex:1;overflow-y:auto;padding:4px 0;display:flex;flex-direction:column;gap:12px;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.msg{display:flex;gap:10px;align-items:flex-start}
+.msg.user{flex-direction:row-reverse}
+.msg-avatar{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:9px;font-weight:500}
+.msg.assistant .msg-avatar{background:rgba(74,158,255,0.15);color:var(--accent3);border:1px solid rgba(74,158,255,0.2)}
+.msg.user .msg-avatar{background:rgba(245,166,35,0.15);color:var(--accent);border:1px solid rgba(245,166,35,0.2)}
+.msg-bubble{max-width:80%;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.6}
+.msg.assistant .msg-bubble{background:var(--surface2);border:1px solid var(--border);border-top-left-radius:2px}
+.msg.user .msg-bubble{background:rgba(74,158,255,0.1);border:1px solid rgba(74,158,255,0.2);border-top-right-radius:2px}
+.chat-input-row{display:flex;gap:8px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+.chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:10px 14px;color:var(--text);font-family:'Barlow',sans-serif;font-size:12px;outline:none;resize:none;transition:border-color 0.2s}
+.chat-input:focus{border-color:var(--accent3)}
+.typing-dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--muted);animation:dot 1.4s ease-in-out infinite}
+.typing-dots span:nth-child(2){animation-delay:.2s}.typing-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{transform:scale(0.6);opacity:0.4}40%{transform:scale(1);opacity:1}}
+
+/* MILESTONE */
+.milestone{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid rgba(30,45,61,0.5)}
+.milestone:last-child{border-bottom:none}
+.ms-dot{width:9px;height:9px;border-radius:50%;margin-top:3px;flex-shrink:0}
+.ms-dot.done{background:var(--accent2)}.ms-dot.next{background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s ease-in-out infinite}.ms-dot.later{background:var(--border);border:1px solid var(--muted)}
+.ms-content{flex:1}
+.ms-name{font-size:12px;font-weight:500;color:var(--text);margin-bottom:2px}
+.ms-detail{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)}
+.ms-amount{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;flex-shrink:0}
+.ms-amount.done{color:var(--accent2)}.ms-amount.next{color:var(--accent)}.ms-amount.later{color:var(--muted)}
+
+/* PROFIT ROW */
+.profit-row{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:var(--surface2);border-radius:5px;border:1px solid var(--border)}
+.profit-row-label{font-size:10px;color:var(--label)}
+.profit-row-value{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px}
+
+/* CR CARD */
+.cr-card{background:var(--surface2);border:1px solid var(--border);border-left:3px solid var(--accent3);border-radius:6px;padding:12px 14px}
+.cr-card-num{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--accent3);margin-bottom:5px}
+.cr-card-title{font-size:11px;font-weight:500;color:var(--text);margin-bottom:6px;line-height:1.3}
+.cr-card-amount{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:18px;color:var(--accent3)}
+.cr-card-breakdown{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:5px;line-height:1.6}
+
+/* RETAINAGE VIZ */
+.ret-vis{display:flex;gap:2px;height:28px;border-radius:4px;overflow:hidden;margin:12px 0}
+.ret-paid{background:var(--accent2);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:8px;color:var(--bg);font-weight:500}
+.ret-held{background:rgba(245,166,35,0.25);border:1px solid rgba(245,166,35,0.4);display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:8px;color:var(--accent);font-weight:500}
+
+footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+footer .foot{font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);letter-spacing:1px}
+
+@media(max-width:900px){
+  .kpi-row{grid-template-columns:repeat(2,1fr)}
+  .grid-2,.grid-3,.grid-65{grid-template-columns:1fr}
+  .edit-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div>
+    <div class="eyebrow">Live Project Dashboard</div>
+    <h1>CCRB <span>·</span> U of M</h1>
+    <div class="sub">Central Campus Recreation Building &nbsp;·&nbsp; Ann Arbor, MI &nbsp;·&nbsp; Applied Flooring, Inc.</div>
+  </div>
+  <div class="header-right">
+    <div class="status-badge"><span class="status-dot"></span>Active — App #5 In Progress</div>
+    <div class="last-updated" id="lastUpdated">Last updated: loading...</div>
+    <button class="btn btn-secondary" onclick="showTab('update')" style="font-size:9px;padding:5px 12px;">⟳ Update Data</button>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="showTab('overview')">Overview</div>
+  <div class="tab" onclick="showTab('burnrate')">Burn Rate</div>
+  <div class="tab" onclick="showTab('billing')">Billing</div>
+  <div class="tab" onclick="showTab('tm')">T&M / CRs</div>
+  <div class="tab" onclick="showTab('profit')">Profitability</div>
+  <div class="tab" onclick="showTab('ai')">AI Analysis</div>
+  <div class="tab" onclick="showTab('update')">Update Data</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB: OVERVIEW -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="tab-overview" class="tab-panel active">
+
+  <!-- ALERT BANNERS -->
+  <div id="alertContainer"></div>
+
+  <!-- KPI ROW -->
+  <div class="kpi-row">
+    <div class="kpi gold">
+      <div class="kpi-label">Base Contract</div>
+      <div class="kpi-value gold" id="kpi-contract">$482,877</div>
+      <div class="kpi-sub">Original subcontract sum</div>
+      <div class="progress-track"><div class="progress-fill" id="kpi-contract-bar" style="background:var(--accent)"></div></div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;" id="kpi-contract-pct"></div>
+    </div>
+    <div class="kpi teal">
+      <div class="kpi-label">Total Billed (QBO)</div>
+      <div class="kpi-value teal" id="kpi-billed">$550,433</div>
+      <div class="kpi-sub">Base + T&M CRs</div>
+      <div class="progress-track"><div class="progress-fill" id="kpi-billed-bar" style="background:var(--accent2)"></div></div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;" id="kpi-billed-pct"></div>
+    </div>
+    <div class="kpi blue">
+      <div class="kpi-label">Retainage Held</div>
+      <div class="kpi-value blue" id="kpi-ret">$46,106</div>
+      <div class="kpi-sub">10% — due at final</div>
+      <div class="progress-track"><div class="progress-fill" id="kpi-ret-bar" style="background:var(--accent3);width:10%"></div></div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;">Held by Amalio Corp</div>
+    </div>
+    <div class="kpi teal">
+      <div class="kpi-label">Gross Profit</div>
+      <div class="kpi-value teal" id="kpi-gp">$239,612</div>
+      <div class="kpi-sub" id="kpi-gp-sub">43.5% margin</div>
+      <div class="progress-track"><div class="progress-fill" id="kpi-gp-bar" style="background:var(--accent2)"></div></div>
+    </div>
+    <div class="kpi gold">
+      <div class="kpi-label">Base Contract Balance</div>
+      <div class="kpi-value gold" id="kpi-balance">$21,816</div>
+      <div class="kpi-sub">Remaining to bill (AIA)</div>
+      <div class="progress-track"><div class="progress-fill" style="background:var(--accent);width:4.5%"></div></div>
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--muted);margin-top:4px;">PCONC1 only</div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title gold">Billing Progress vs Contract</div>
+      <canvas id="billingChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title gold">Pay Application History</div>
+      <div id="milestoneTrack"></div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title blue">Schedule of Values — App #5</div>
+      <table class="data-table" id="sovTable"></table>
+      <div style="margin-top:16px;max-width:160px;margin-left:auto;margin-right:auto"><canvas id="sovDonut"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title blue">Retainage Tracking</div>
+      <div style="margin-bottom:12px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:4px">TOTAL EARNED LESS RETAINAGE</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:32px;color:var(--accent3)" id="ret-paid-val">$414,955</div>
+        <div style="font-size:10px;color:var(--muted)">Paid through App #4</div>
+      </div>
+      <div class="ret-vis">
+        <div class="ret-paid" style="flex:414955">Paid: $414,955</div>
+        <div class="ret-held" style="flex:46106">Held: $46,106</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+        <div class="profit-row"><div class="profit-row-label">Retainage Rate</div><div class="profit-row-value" style="color:var(--accent3)">10%</div></div>
+        <div class="profit-row"><div class="profit-row-label">Held by Amalio</div><div class="profit-row-value" style="color:var(--accent)" id="ret-held-val">$46,106</div></div>
+        <div class="profit-row"><div class="profit-row-label">Retainage on App #5</div><div class="profit-row-value" style="color:var(--accent3)">~$2,182</div></div>
+        <div class="profit-row"><div class="profit-row-label">Total Due at Final</div><div class="profit-row-value" style="color:var(--accent2)">~$48,288</div></div>
+      </div>
+      <canvas id="retChart" style="margin-top:16px;max-height:150px"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB: BURN RATE -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="tab-burnrate" class="tab-panel">
+  <div class="grid-65">
+    <div class="card">
+      <div class="card-title teal">Cost Burn Rate vs Billing Progress</div>
+      <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        Bar = % of estimated budget consumed &nbsp;|&nbsp; White line = billing % completed &nbsp;|&nbsp;
+        <span style="color:var(--accent2)">■</span> OK &nbsp;
+        <span style="color:var(--accent)">■</span> Caution (>20% gap) &nbsp;
+        <span style="color:var(--danger)">■</span> Alert (>35% gap)
+      </div>
+      <div id="burnRateBars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title teal">Burn Rate Summary</div>
+      <canvas id="burnRadar" style="max-height:260px"></canvas>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:8px;letter-spacing:1.5px;text-transform:uppercase">Overall Job Health</div>
+        <div id="burnSummaryText" style="font-size:12px;color:var(--label);line-height:1.6"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title teal">Estimate vs. Actual Detail</div>
+    <table class="data-table" id="burnTable"></table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB: BILLING -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="tab-billing" class="tab-panel">
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title gold">Cumulative Billing by Application</div>
+      <canvas id="billingChart2"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title gold">Period Billing (Each App)</div>
+      <canvas id="periodChart"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title gold">Pay Application Log</div>
+    <table class="data-table" id="appTable"></table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB: T&M / CRs -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="tab-tm" class="tab-panel">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px" id="crCards"></div>
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title teal">T&M Cost Breakdown</div>
+      <canvas id="tmChart"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title teal">Labor Rate Structure</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <div class="profit-row"><div class="profit-row-label">Straight Time (ST)</div><div class="profit-row-value" style="color:var(--accent3)">$81.72/hr</div></div>
+        <div class="profit-row"><div class="profit-row-label">Overtime (OT 1.5x)</div><div class="profit-row-value" style="color:var(--accent)">$106.19/hr</div></div>
+        <div class="profit-row"><div class="profit-row-label">Double Time (DT 2x)</div><div class="profit-row-value" style="color:var(--danger)">$130.65/hr</div></div>
+      </div>
+      <div style="padding:12px;background:var(--surface2);border-radius:5px;border:1px solid var(--border)">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);margin-bottom:6px;letter-spacing:1.5px;text-transform:uppercase">New T&M Scope Status</div>
+        <div style="font-size:12px;color:var(--label);line-height:1.5">9 days of new T&M scope in progress (Feb–Mar 2026). Daily signed tickets being collected. CR #4 pending submission upon completion.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB: PROFITABILITY -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="tab-profit" class="tab-panel">
+  <div class="grid-65">
+    <div class="card">
+      <div class="card-title teal">P&L Summary — QBO (All Dates)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+        <div class="profit-row"><div class="profit-row-label">Total Revenue</div><div class="profit-row-value" style="color:var(--accent2)">$550,433</div></div>
+        <div class="profit-row"><div class="profit-row-label">Total COGS</div><div class="profit-row-value" style="color:var(--danger)">$310,821</div></div>
+        <div class="profit-row"><div class="profit-row-label">Materials</div><div class="profit-row-value">$144,445</div></div>
+        <div class="profit-row"><div class="profit-row-label">Diamond Expense</div><div class="profit-row-value">$7,695</div></div>
+        <div class="profit-row"><div class="profit-row-label">Labor</div><div class="profit-row-value">$101,520</div></div>
+        <div class="profit-row"><div class="profit-row-label">Fuel / Gas</div><div class="profit-row-value">$8,562</div></div>
+        <div class="profit-row"><div class="profit-row-label">Hotels</div><div class="profit-row-value">$24,745</div></div>
+        <div class="profit-row"><div class="profit-row-label">Consumables</div><div class="profit-row-value">$23,625</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div class="profit-row" style="border-color:rgba(0,201,167,0.3);background:rgba(0,201,167,0.05)"><div class="profit-row-label">Gross Profit</div><div class="profit-row-value" style="color:var(--accent2)">$239,612</div></div>
+        <div class="profit-row" style="border-color:rgba(0,201,167,0.3);background:rgba(0,201,167,0.05)"><div class="profit-row-label">Gross Margin</div><div class="profit-row-value" style="color:var(--accent2)">43.5%</div></div>
+        <div class="profit-row" style="border-color:rgba(0,201,167,0.3);background:rgba(0,201,167,0.07);grid-column:span 2"><div class="profit-row-label">Net Income</div><div class="profit-row-value" style="color:var(--accent2);font-size:20px">$239,581</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title teal">Cost Composition</div>
+      <canvas id="profitChart" style="max-height:260px"></canvas>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title teal">Margin vs Estimate</div>
+    <canvas id="marginChart" style="max-height:200px"></canvas>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB: AI ANALYSIS -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="tab-ai" class="tab-panel">
+  <div class="grid-65">
+    <div class="card" style="animation-delay:.3s">
+      <div class="card-title teal">Project Intelligence</div>
+      <div class="chat-wrap">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input-row">
+          <textarea class="chat-input" id="chatInput" rows="2" placeholder="Ask about this project — burn rate, billing gaps, T&M status, risk flags..."></textarea>
+          <button class="btn btn-primary" onclick="sendChat()" style="align-self:flex-end">Send</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="animation-delay:.35s">
+      <div class="card-title teal">Quick Analysis</div>
+      <div style="display:flex;flex-direction:column;gap:8px" id="quickButtons"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- TAB: UPDATE DATA -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div id="tab-update" class="tab-panel">
+  <div class="grid-2">
+    <div>
+      <div class="edit-section">
+        <h3>Actuals — From QBO P&L</h3>
+        <div class="edit-grid">
+          <div class="edit-field"><label>Total Revenue</label><input type="number" id="u-revenue" placeholder="550433"></div>
+          <div class="edit-field"><label>Labor</label><input type="number" id="u-labor" placeholder="101520"></div>
+          <div class="edit-field"><label>Materials</label><input type="number" id="u-materials" placeholder="144445"></div>
+          <div class="edit-field"><label>Hotels / Travel</label><input type="number" id="u-hotels" placeholder="24745"></div>
+          <div class="edit-field"><label>Consumables</label><input type="number" id="u-consumables" placeholder="23625"></div>
+          <div class="edit-field"><label>Diamond / Tooling</label><input type="number" id="u-diamond" placeholder="7695"></div>
+          <div class="edit-field"><label>Fuel / Gas</label><input type="number" id="u-fuel" placeholder="8562"></div>
+          <div class="edit-field"><label>Rental Equip</label><input type="number" id="u-rental" placeholder="117"></div>
+          <div class="edit-field"><label>Meals</label><input type="number" id="u-meals" placeholder="113"></div>
+        </div>
+      </div>
+      <div class="edit-section">
+        <h3>AIA Billing Progress</h3>
+        <div class="edit-grid">
+          <div class="edit-field"><label>PCONC1 — This Period</label><input type="number" id="u-pconc1" placeholder="21816.44"></div>
+          <div class="edit-field"><label>App #5 Period To</label><input type="text" id="u-periodto" placeholder="03/31/2026"></div>
+          <div class="edit-field"><label>T&M Days Completed</label><input type="number" id="u-tmdays" placeholder="0"></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="edit-section">
+        <h3>Project Estimates (Budget)</h3>
+        <div class="edit-grid">
+          <div class="edit-field"><label>Est. Labor</label><input type="number" id="e-labor" placeholder="145000"></div>
+          <div class="edit-field"><label>Est. Materials</label><input type="number" id="e-materials" placeholder="160000"></div>
+          <div class="edit-field"><label>Est. Hotels / Travel</label><input type="number" id="e-hotels" placeholder="30000"></div>
+          <div class="edit-field"><label>Est. Consumables</label><input type="number" id="e-consumables" placeholder="28000"></div>
+          <div class="edit-field"><label>Est. Diamond / Tooling</label><input type="number" id="e-diamond" placeholder="10000"></div>
+          <div class="edit-field"><label>Est. Fuel</label><input type="number" id="e-fuel" placeholder="10000"></div>
+          <div class="edit-field"><label>Billing % Complete</label><input type="number" id="e-billing-pct" placeholder="95.5"></div>
+          <div class="edit-field"><label>Schedule Days Elapsed %</label><input type="number" id="e-sched-pct" placeholder="92"></div>
+        </div>
+      </div>
+      <div class="edit-section">
+        <h3>Project Info</h3>
+        <div class="edit-grid">
+          <div class="edit-field" style="grid-column:span 3"><label>Notes / What Changed This Week</label><input type="text" id="u-notes" placeholder="e.g. Completed PCONC1 return, 3 T&M days logged"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:12px">
+        <button class="btn btn-success" onclick="saveData()">✓ Save & Refresh Dashboard</button>
+        <button class="btn btn-secondary" onclick="loadDefaults()">Reset to Defaults</button>
+        <span class="save-msg" id="saveMsg">Dashboard updated!</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="edit-section" style="margin-top:4px">
+    <h3>How to update this dashboard weekly</h3>
+    <div style="font-size:12px;color:var(--label);line-height:1.8">
+      <strong style="color:var(--text)">1. Export from QBO</strong> — Run the P&L filtered to this job. Pull the revenue and each COGS line. Enter above.<br>
+      <strong style="color:var(--text)">2. Check your AIA</strong> — After submitting App #5, update PCONC1 this period and Period To date.<br>
+      <strong style="color:var(--text)">3. Log T&M days</strong> — Update how many of the 9 T&M days are complete.<br>
+      <strong style="color:var(--text)">4. Save</strong> — All charts, burn rate bars, and alerts recalculate instantly.<br>
+      <strong style="color:var(--text)">5. Host it</strong> — Upload this HTML file to GitHub Pages (free) or embed in GoHighLevel as an iframe for team access.
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="foot">APPLIED FLOORING, INC. · CCRB PROJECT · AMALIO CORPORATION</div>
+  <div class="foot" id="footRight">App #5 period: Feb–Mar 2026 · 9 remaining T&M days</div>
+</footer>
+
+</div><!-- end .wrap -->
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA STORE — edit here or via the Update tab
+// ════════════════════════════════════════════════════════
+let D = {
+  // Actuals from QBO
+  revenue:     550432.79,
+  labor:       101519.50,
+  materials:   144444.59,
+  hotels:      24745.38,
+  consumables: 23625.11,
+  diamond:     7694.77,
+  fuel:        8562.05,
+  rental:      116.60,
+  meals:       112.57,
+
+  // AIA
+  contractBase: 482877,
+  pconc1Sched:  149880,
+  pconc1Prev:   128063.56,
+  pconc1ThisPeriod: 0,
+  retainageHeld: 46106.056,
+  priorCerts:   414954.504,
+
+  // Estimates (budget)
+  estLabor:      145000,
+  estMaterials:  160000,
+  estHotels:     30000,
+  estConsumables: 28000,
+  estDiamond:    10000,
+  estFuel:       10000,
+
+  // Progress
+  billingPct:    95.5,
+  schedPct:      92,
+  tmDaysComplete: 0,
+  tmDaysTotal:   9,
+
+  // Meta
+  lastUpdated: 'Mar 4, 2026',
+  notes: '',
+
+  // Pay apps
+  apps: [
+    { label: 'App 1\nJun 25', date:'Jun 2025', detail:'PC PCONC1 mobilization',              period:3150,    cumulative:3150,    status:'done' },
+    { label: 'App 2\nSep 25', date:'Sep 2025', detail:'PCONC1 + PCONC2 major progress',     period:242100,  cumulative:245250,  status:'done' },
+    { label: 'App 3\nNov 25', date:'Nov 2025', detail:'PCONC1 + PCONC2 continued',          period:123689,  cumulative:368939,  status:'done' },
+    { label: 'App 4\nDec 25', date:'Dec 2025', detail:'PCONC2 + Proguard complete',         period:46015,   cumulative:414955,  status:'done' },
+    { label: 'App 5\nMar 26', date:'Mar 2026', detail:'PCONC1 final balance · Feb–Mar',     period:19634,   cumulative:434589,  status:'next' },
+    { label: 'Retainage',     date:'Final',    detail:'Upon project acceptance',             period:46106,   cumulative:480695,  status:'later'},
+  ],
+
+  // T&M CRs
+  crs: [
+    { num:'CR #1', status:'Approved', title:'Concrete Grinding\n(ADA Rail Height)', amount:58001.90,
+      breakdown:'Labor: 527.25 hrs @ $81.72 · $43,087\nMaterials (grinding tooling): $3,115\nEquipment (16 days): $12,800' },
+    { num:'CR #2', status:'Approved', title:'Gap Infill\n(Grind & Infill at Rail)', amount:17685.67,
+      breakdown:'Labor: 172 hrs @ $81.72 · $14,056\nMaterials (foam, EUCO, backer rod): $2,080\nEquipment (6 days): $1,550' },
+    { num:'CR #3', status:'Approved', title:'Laticrete NXT White\n(Color Change Upcharge)', amount:10532.16,
+      breakdown:'540 bags × $16/bag upcharge\n+ 6% MI sales tax + 15% O&P\nMaterials only — no labor/equip' },
+  ]
+};
+
+// Load saved data from localStorage if exists
+function loadSaved() {
+  try {
+    const saved = localStorage.getItem('ccrb_data');
+    if (saved) D = Object.assign(D, JSON.parse(saved));
+  } catch(e) {}
+}
+
+function saveData() {
+  // Read inputs
+  const fields = {
+    revenue:'u-revenue', labor:'u-labor', materials:'u-materials',
+    hotels:'u-hotels', consumables:'u-consumables', diamond:'u-diamond',
+    fuel:'u-fuel', rental:'u-rental', meals:'u-meals',
+    pconc1ThisPeriod:'u-pconc1', tmDaysComplete:'u-tmdays',
+    estLabor:'e-labor', estMaterials:'e-materials', estHotels:'e-hotels',
+    estConsumables:'e-consumables', estDiamond:'e-diamond', estFuel:'e-fuel',
+    billingPct:'e-billing-pct', schedPct:'e-sched-pct'
+  };
+  for (const [key, id] of Object.entries(fields)) {
+    const el = document.getElementById(id);
+    if (el && el.value !== '') D[key] = parseFloat(el.value);
+  }
+  const notes = document.getElementById('u-notes');
+  if (notes && notes.value) D.notes = notes.value;
+  D.lastUpdated = new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'});
+
+  try { localStorage.setItem('ccrb_data', JSON.stringify(D)); } catch(e) {}
+
+  refreshAll();
+  const msg = document.getElementById('saveMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 3000);
+}
+
+function loadDefaults() {
+  try { localStorage.removeItem('ccrb_data'); } catch(e) {}
+  location.reload();
+}
+
+// ════════════════════════════════════════════════════════
+// COMPUTED PROPERTIES
+// ════════════════════════════════════════════════════════
+function calc() {
+  const totalCOGS = D.labor + D.materials + D.hotels + D.consumables + D.diamond + D.fuel + D.rental + D.meals;
+  const grossProfit = D.revenue - totalCOGS;
+  const grossMargin = D.revenue > 0 ? (grossProfit / D.revenue * 100) : 0;
+  const pconc1Total = D.pconc1Prev + D.pconc1ThisPeriod;
+  const pconc1Balance = D.pconc1Sched - pconc1Total;
+  const contractBilledPct = ((D.pconc1Prev + D.pconc1ThisPeriod + 298815 + 34182) / D.contractBase * 100);
+
+  // Burn rates vs estimates
+  const burns = {
+    labor:       { actual: D.labor,       est: D.estLabor,       label:'Labor' },
+    materials:   { actual: D.materials,   est: D.estMaterials,   label:'Materials' },
+    hotels:      { actual: D.hotels,      est: D.estHotels,      label:'Hotels / Travel' },
+    consumables: { actual: D.consumables, est: D.estConsumables, label:'Consumables' },
+    diamond:     { actual: D.diamond,     est: D.estDiamond,     label:'Diamond / Tooling' },
+    fuel:        { actual: D.fuel,        est: D.estFuel,        label:'Fuel' },
+  };
+  for (const k in burns) {
+    const b = burns[k];
+    b.pct = b.est > 0 ? Math.min((b.actual / b.est * 100), 110) : 0;
+    b.gap = b.pct - D.billingPct;
+    b.schedGap = b.pct - D.schedPct;
+    b.status = (b.gap > 35 || b.schedGap > 35) ? 'danger' : (b.gap > 20 || b.schedGap > 20) ? 'warn' : 'ok';
+    b.remaining = b.est - b.actual;
+  }
+  return { totalCOGS, grossProfit, grossMargin, contractBilledPct, pconc1Balance, burns };
+}
+
+// ════════════════════════════════════════════════════════
+// ALERTS
+// ════════════════════════════════════════════════════════
+function renderAlerts() {
+  const c = calc();
+  const container = document.getElementById('alertContainer');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const alerts = [];
+
+  // Check each burn category
+  for (const [key, b] of Object.entries(c.burns)) {
+    if (b.status === 'danger') {
+      alerts.push({ type:'red', icon:'🔴',
+        title:`${b.label} over budget — action required`,
+        body:`${b.label} is at ${b.pct.toFixed(0)}% of estimated budget, but billing is only at ${D.billingPct.toFixed(0)}% complete. That's a ${b.gap.toFixed(0)}% gap. Your team should review ${b.label.toLowerCase()} costs on this job immediately.`
+      });
+    } else if (b.status === 'warn') {
+      alerts.push({ type:'yellow', icon:'⚠️',
+        title:`${b.label} running ahead of billing`,
+        body:`${b.label} is at ${b.pct.toFixed(0)}% consumed vs ${D.billingPct.toFixed(0)}% billed — a ${b.gap.toFixed(0)}% gap. Monitor closely. If this continues, raise with the team.`
+      });
+    }
+  }
+
+  // Overall margin alert
+  if (c.grossMargin < 35) {
+    alerts.push({ type:'red', icon:'🔴', title:'Gross margin below target',
+      body:`Current gross margin is ${c.grossMargin.toFixed(1)}% — below the 35% threshold. Revenue: $${fmt(D.revenue)}, COGS: $${fmt(c.totalCOGS)}.` });
+  }
+
+  // T&M days
+  if (D.tmDaysComplete > 0) {
+    alerts.push({ type:'yellow', icon:'📋', title:`T&M in progress — ${D.tmDaysComplete} of ${D.tmDaysTotal} days logged`,
+      body:`${D.tmDaysTotal - D.tmDaysComplete} days remaining. Ensure daily signed tickets are collected before submitting CR #4.` });
+  }
+
+  if (alerts.length === 0) {
+    alerts.push({ type:'green', icon:'✅', title:'All systems healthy',
+      body:`No burn rate flags or margin alerts. Billing is at ${D.billingPct.toFixed(0)}% and cost categories are tracking within expectations.` });
+  }
+
+  alerts.forEach(a => {
+    const div = document.createElement('div');
+    div.className = `alert-banner ${a.type}`;
+    div.innerHTML = `<div class="alert-icon">${a.icon}</div><div><div class="alert-title">${a.title}</div><div class="alert-body">${a.body}</div></div>`;
+    container.appendChild(div);
+  });
+}
+
+// ════════════════════════════════════════════════════════
+// KPI UPDATE
+// ════════════════════════════════════════════════════════
+function renderKPIs() {
+  const c = calc();
+  const billedPct = Math.min((D.revenue / D.contractBase * 100), 100);
+
+  document.getElementById('kpi-contract').textContent = '$' + fmt(D.contractBase);
+  document.getElementById('kpi-contract-bar').style.width = c.contractBilledPct.toFixed(1) + '%';
+  document.getElementById('kpi-contract-pct').textContent = c.contractBilledPct.toFixed(1) + '% billed to date';
+
+  document.getElementById('kpi-billed').textContent = '$' + fmt(D.revenue);
+  document.getElementById('kpi-billed-bar').style.width = Math.min(billedPct, 100).toFixed(1) + '%';
+  document.getElementById('kpi-billed-pct').textContent = 'Incl. T&M CRs';
+
+  document.getElementById('kpi-ret').textContent = '$' + fmt(D.retainageHeld);
+
+  document.getElementById('kpi-gp').textContent = '$' + fmt(c.grossProfit);
+  document.getElementById('kpi-gp-sub').textContent = c.grossMargin.toFixed(1) + '% margin';
+  document.getElementById('kpi-gp-bar').style.width = Math.min(c.grossMargin, 100).toFixed(1) + '%';
+
+  document.getElementById('kpi-balance').textContent = '$' + fmt(c.pconc1Balance);
+  document.getElementById('lastUpdated').textContent = 'Last updated: ' + D.lastUpdated;
+}
+
+// ════════════════════════════════════════════════════════
+// SOV TABLE
+// ════════════════════════════════════════════════════════
+function renderSOV() {
+  const c = calc();
+  const rows = [
+    ['PC PCONC1', D.pconc1Sched, D.pconc1Prev, c.pconc1Balance, (D.pconc1Prev/D.pconc1Sched*100), false],
+    ['PC PCONC2', 298815, 298815, 0, 100, true],
+    ['Proguard Duracover', 34182, 34182, 0, 100, true],
+  ];
+  const totSched = rows.reduce((s,r)=>s+r[1],0);
+  const totPrev  = rows.reduce((s,r)=>s+r[2],0);
+  const totBal   = rows.reduce((s,r)=>s+r[3],0);
+
+  const t = document.getElementById('sovTable');
+  if (!t) return;
+  t.innerHTML = `<thead><tr><th>Line Item</th><th>Scheduled</th><th>Prev. Billed</th><th>Balance</th><th>%</th></tr></thead>`;
+  const tb = document.createElement('tbody');
+  rows.forEach(([label,sched,prev,bal,pct,done]) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${label}</td><td>$${fmt(sched)}</td><td>$${fmt(prev)}</td>
+      <td style="color:${bal>0?'var(--accent)':'var(--muted)'}">${bal>0?'$'+fmt(bal):'—'}</td>
+      <td><span class="pill ${done?'pill-ok':'pill-warn'}">${pct.toFixed(1)}%</span></td>`;
+    tb.appendChild(tr);
+  });
+  const tot = document.createElement('tr');
+  tot.innerHTML = `<td>TOTALS</td><td>$${fmt(totSched)}</td><td>$${fmt(totPrev)}</td><td style="color:var(--accent)">$${fmt(totBal)}</td><td><span class="pill pill-warn">${(totPrev/totSched*100).toFixed(1)}%</span></td>`;
+  tb.appendChild(tot);
+  t.appendChild(tb);
+}
+
+// ════════════════════════════════════════════════════════
+// MILESTONE TRACK
+// ════════════════════════════════════════════════════════
+function renderMilestones() {
+  const el = document.getElementById('milestoneTrack');
+  if (!el) return;
+  el.innerHTML = D.apps.map(a => `
+    <div class="milestone">
+      <div class="ms-dot ${a.status}"></div>
+      <div class="ms-content">
+        <div class="ms-name">App #${D.apps.indexOf(a)+1 <= 5 ? D.apps.indexOf(a)+1 : 'Retainage'} — ${a.date}</div>
+        <div class="ms-detail">${a.detail}</div>
+      </div>
+      <div class="ms-amount ${a.status}">$${fmt(a.period)}${a.status==='next'?' est.':''}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// BURN RATE BARS
+// ════════════════════════════════════════════════════════
+function renderBurnBars() {
+  const c = calc();
+  const el = document.getElementById('burnRateBars');
+  if (!el) return;
+  el.innerHTML = '';
+
+  for (const [key, b] of Object.entries(c.burns)) {
+    const colors = { ok:'var(--accent2)', warn:'var(--accent)', danger:'var(--danger)' };
+    const color = colors[b.status];
+    const billingLeft = Math.min(D.billingPct, 100);
+    const statusLabel = b.status === 'danger' ? `<span class="pill pill-danger">⚠ ${b.gap.toFixed(0)}% ahead of billing</span>` :
+                        b.status === 'warn'   ? `<span class="pill pill-warn">⚡ ${b.gap.toFixed(0)}% ahead of billing</span>` :
+                                                `<span class="pill pill-ok">On track</span>`;
+    el.innerHTML += `
+      <div class="burn-item">
+        <div class="burn-header">
+          <div class="burn-label">${b.label}</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <span style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted)">$${fmt(b.actual)} / $${fmt(b.est)}</span>
+            ${statusLabel}
+          </div>
+        </div>
+        <div class="burn-track">
+          <div class="burn-bar" style="width:${Math.min(b.pct,100)}%;background:${color};opacity:0.8"></div>
+          <div class="burn-billing-marker" style="left:${billingLeft}%"></div>
+        </div>
+        <div class="burn-meta" style="margin-top:4px">${b.pct.toFixed(0)}% of budget consumed &nbsp;·&nbsp; $${fmt(Math.max(b.remaining,0))} remaining &nbsp;·&nbsp; Billing: ${D.billingPct.toFixed(0)}% &nbsp;·&nbsp; Schedule: ${D.schedPct.toFixed(0)}%</div>
+      </div>`;
+  }
+
+  // Summary text
+  const c2 = calc();
+  const flags = Object.values(c2.burns).filter(b=>b.status!=='ok');
+  const el2 = document.getElementById('burnSummaryText');
+  if (el2) {
+    if (flags.length === 0) {
+      el2.innerHTML = '<span style="color:var(--accent2)">✅ All cost categories tracking within 20% of billing progress. No immediate concerns.</span>';
+    } else {
+      el2.innerHTML = flags.map(b =>
+        `<div style="margin-bottom:6px"><span style="color:${b.status==='danger'?'var(--danger)':'var(--accent)'}">
+        ${b.status==='danger'?'🔴':'⚠️'} <strong>${b.label}</strong></span> — ${b.pct.toFixed(0)}% burned vs ${D.billingPct.toFixed(0)}% billed (${b.gap.toFixed(0)}% gap vs billing, ${b.schedGap.toFixed(0)}% gap vs schedule)</div>`
+      ).join('');
+    }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// BURN TABLE
+// ════════════════════════════════════════════════════════
+function renderBurnTable() {
+  const c = calc();
+  const t = document.getElementById('burnTable');
+  if (!t) return;
+  t.innerHTML = `<thead><tr><th>Category</th><th>Estimated</th><th>Actual</th><th>Remaining</th><th>% Consumed</th><th>Billing %</th><th>Gap</th><th>Status</th></tr></thead>`;
+  const tb = document.createElement('tbody');
+  for (const [key, b] of Object.entries(c.burns)) {
+    const tr = document.createElement('tr');
+    if (b.status==='danger') tr.classList.add('flag-danger');
+    else if (b.status==='warn') tr.classList.add('flag-warn');
+    tr.innerHTML = `
+      <td>${b.label}</td>
+      <td>$${fmt(b.est)}</td>
+      <td>$${fmt(b.actual)}</td>
+      <td style="color:${b.remaining<0?'var(--danger)':'var(--text)'}">$${fmt(Math.max(b.remaining,0))}${b.remaining<0?' ⚠️':''}</td>
+      <td><span class="pill ${b.status==='ok'?'pill-ok':b.status==='warn'?'pill-warn':'pill-danger'}">${b.pct.toFixed(1)}%</span></td>
+      <td>${D.billingPct.toFixed(1)}%</td>
+      <td style="color:${b.gap>35?'var(--danger)':b.gap>20?'var(--accent)':'var(--accent2)'}">${b.gap>0?'+':''}${b.gap.toFixed(1)}%</td>
+      <td><span class="pill ${b.status==='ok'?'pill-ok':b.status==='warn'?'pill-warn':'pill-danger'}">${b.status==='ok'?'OK':b.status==='warn'?'CAUTION':'ALERT'}</span></td>`;
+    tb.appendChild(tr);
+  }
+  // Total row
+  const tot = document.createElement('tr');
+  tot.innerHTML = `<td>TOTAL COGS</td><td>$${fmt(Object.values(c.burns).reduce((s,b)=>s+b.est,0))}</td><td>$${fmt(c.totalCOGS)}</td><td colspan="5" style="color:var(--muted)">Gross Margin: ${c.grossMargin.toFixed(1)}%</td>`;
+  tb.appendChild(tot);
+  t.appendChild(tb);
+}
+
+// ════════════════════════════════════════════════════════
+// APP TABLE
+// ════════════════════════════════════════════════════════
+function renderAppTable() {
+  const t = document.getElementById('appTable');
+  if (!t) return;
+  t.innerHTML = `<thead><tr><th>Application</th><th>Date</th><th>Description</th><th>Period Amount</th><th>Cumulative</th><th>Status</th></tr></thead>`;
+  const tb = document.createElement('tbody');
+  D.apps.forEach((a,i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>App #${i+1<=5?i+1:'Retainage'}</td>
+      <td style="font-family:'DM Mono',monospace;font-size:10px">${a.date}</td>
+      <td>${a.detail}</td>
+      <td>$${fmt(a.period)}${a.status==='next'?' <span style="color:var(--muted)">(est.)</span>':''}</td>
+      <td>$${fmt(a.cumulative)}</td>
+      <td><span class="pill ${a.status==='done'?'pill-ok':a.status==='next'?'pill-warn':'pill-danger'}">${a.status==='done'?'PAID':a.status==='next'?'IN PROGRESS':'PENDING'}</span></td>`;
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb);
+}
+
+// ════════════════════════════════════════════════════════
+// CR CARDS
+// ════════════════════════════════════════════════════════
+function renderCRCards() {
+  const el = document.getElementById('crCards');
+  if (!el) return;
+  el.innerHTML = D.crs.map(cr => `
+    <div class="cr-card">
+      <div class="cr-card-num">${cr.num} · ${cr.status}</div>
+      <div class="cr-card-title">${cr.title.replace('\n','<br>')}</div>
+      <div class="cr-card-amount">$${fmt(cr.amount)}</div>
+      <div class="cr-card-breakdown">${cr.breakdown.replace(/\n/g,'<br>')}</div>
+    </div>`).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// CHARTS
+// ════════════════════════════════════════════════════════
+const gold='#f5a623', teal='#00c9a7', blue='#4a9eff', danger='#ff5c5c';
+let charts = {};
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+function renderCharts() {
+  const c = calc();
+
+  // Billing Chart (Overview)
+  destroyChart('billingChart');
+  const bc = document.getElementById('billingChart');
+  if (bc) charts['billingChart'] = new Chart(bc, {
+    type:'bar',
+    data:{
+      labels: D.apps.slice(0,5).map(a=>a.label),
+      datasets:[
+        { label:'Cumulative Billed', data: D.apps.slice(0,5).map(a=>a.cumulative),
+          backgroundColor:['rgba(0,201,167,0.7)','rgba(0,201,167,0.7)','rgba(0,201,167,0.7)','rgba(0,201,167,0.7)','rgba(245,166,35,0.6)'],
+          borderColor:[teal,teal,teal,teal,gold], borderWidth:1, borderRadius:3 },
+        { label:'Contract Value', data:Array(5).fill(D.contractBase), type:'line',
+          borderColor:'rgba(74,158,255,0.5)', borderWidth:1.5, borderDash:[4,4], pointRadius:0, fill:false }
+      ]
+    },
+    options:{ responsive:true, plugins:{ legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:12,font:{size:9}}},
+      tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}} },
+      scales:{ x:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9}}},
+        y:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9},callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
+  });
+
+  // SOV Donut
+  destroyChart('sovDonut');
+  const sd = document.getElementById('sovDonut');
+  if (sd) charts['sovDonut'] = new Chart(sd, {
+    type:'doughnut',
+    data:{ labels:['PCONC1 Billed','PCONC1 Remaining','PCONC2','Proguard'],
+      datasets:[{ data:[D.pconc1Prev,c.pconc1Balance,298815,34182],
+        backgroundColor:['rgba(245,166,35,0.8)','rgba(245,166,35,0.2)','rgba(0,201,167,0.8)','rgba(74,158,255,0.8)'],
+        borderColor:'#111820', borderWidth:2 }] },
+    options:{ responsive:true, cutout:'65%', plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.toLocaleString()}} } }
+  });
+
+  // Retainage Chart
+  destroyChart('retChart');
+  const rc = document.getElementById('retChart');
+  if (rc) charts['retChart'] = new Chart(rc, {
+    type:'bar',
+    data:{ labels:['App 1','App 2','App 3','App 4','App 5 (est)','Final'],
+      datasets:[{ label:'Retainage Held', data:[350,27250,40993,46106,48288,0],
+        backgroundColor:['rgba(74,158,255,0.5)','rgba(74,158,255,0.5)','rgba(74,158,255,0.5)','rgba(74,158,255,0.5)','rgba(245,166,35,0.5)','rgba(0,201,167,0.7)'],
+        borderColor:[blue,blue,blue,blue,gold,teal], borderWidth:1, borderRadius:3 }] },
+    options:{ responsive:true, plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}} },
+      scales:{ x:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9}}},
+        y:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9},callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
+  });
+
+  // Billing Chart 2 (Billing tab)
+  destroyChart('billingChart2');
+  const bc2 = document.getElementById('billingChart2');
+  if (bc2) charts['billingChart2'] = new Chart(bc2, {
+    type:'bar',
+    data:{ labels:D.apps.slice(0,5).map(a=>a.label),
+      datasets:[
+        { label:'Cumulative Billed', data:D.apps.slice(0,5).map(a=>a.cumulative),
+          backgroundColor:'rgba(0,201,167,0.6)', borderColor:teal, borderWidth:1, borderRadius:3 },
+        { label:'Contract Value', data:Array(5).fill(D.contractBase), type:'line',
+          borderColor:'rgba(74,158,255,0.5)', borderWidth:1.5, borderDash:[4,4], pointRadius:0, fill:false }
+      ] },
+    options:{ responsive:true, plugins:{ legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:12,font:{size:9}}},
+      tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}} },
+      scales:{ x:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9}}},
+        y:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9},callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
+  });
+
+  // Period Chart
+  destroyChart('periodChart');
+  const pc = document.getElementById('periodChart');
+  if (pc) charts['periodChart'] = new Chart(pc, {
+    type:'bar',
+    data:{ labels:D.apps.slice(0,5).map(a=>a.label),
+      datasets:[{ label:'Period Amount', data:D.apps.slice(0,5).map(a=>a.period),
+        backgroundColor:['rgba(74,158,255,0.6)','rgba(74,158,255,0.6)','rgba(74,158,255,0.6)','rgba(74,158,255,0.6)','rgba(245,166,35,0.5)'],
+        borderColor:[blue,blue,blue,blue,gold], borderWidth:1, borderRadius:3 }] },
+    options:{ responsive:true, plugins:{ legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}} },
+      scales:{ x:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9}}},
+        y:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9},callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
+  });
+
+  // T&M Chart
+  destroyChart('tmChart');
+  const tc = document.getElementById('tmChart');
+  if (tc) charts['tmChart'] = new Chart(tc, {
+    type:'bar',
+    data:{ labels:['CR #1 Grinding','CR #2 Gap Infill','CR #3 NXT White'],
+      datasets:[
+        { label:'Labor', data:[43087,14056,0], backgroundColor:'rgba(74,158,255,0.7)', borderRadius:3 },
+        { label:'Materials', data:[3115,2080,10532], backgroundColor:'rgba(0,201,167,0.7)', borderRadius:3 },
+        { label:'Equipment', data:[12800,1550,0], backgroundColor:'rgba(245,166,35,0.7)', borderRadius:3 },
+      ] },
+    options:{ responsive:true, scales:{ x:{stacked:true,grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9}}},
+        y:{stacked:true,grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9},callback:v=>'$'+(v/1000).toFixed(0)+'k'}} },
+      plugins:{ legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:10,font:{size:9}}},
+        tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}} } }
+  });
+
+  // Profit Chart
+  destroyChart('profitChart');
+  const pfc = document.getElementById('profitChart');
+  if (pfc) charts['profitChart'] = new Chart(pfc, {
+    type:'doughnut',
+    data:{ labels:['Materials','Diamond','Labor','Fuel','Hotels','Consumables','Net Income'],
+      datasets:[{ data:[D.materials,D.diamond,D.labor,D.fuel,D.hotels,D.consumables,c.grossProfit],
+        backgroundColor:['rgba(255,92,92,0.75)','rgba(255,92,92,0.55)','rgba(255,92,92,0.85)','rgba(255,92,92,0.45)','rgba(255,92,92,0.35)','rgba(255,92,92,0.65)','rgba(0,201,167,0.85)'],
+        borderColor:'#111820', borderWidth:2 }] },
+    options:{ responsive:true, cutout:'60%', plugins:{ legend:{display:true,position:'bottom',labels:{boxWidth:8,padding:8,font:{size:8}}},
+      tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.toLocaleString()}} } }
+  });
+
+  // Margin Chart
+  destroyChart('marginChart');
+  const mc = document.getElementById('marginChart');
+  if (mc) charts['marginChart'] = new Chart(mc, {
+    type:'bar',
+    data:{ labels:['Labor','Materials','Hotels','Consumables','Diamond','Fuel','Overall Margin'],
+      datasets:[
+        { label:'Estimated Budget', data:[D.estLabor,D.estMaterials,D.estHotels,D.estConsumables,D.estDiamond,D.estFuel,null],
+          backgroundColor:'rgba(74,158,255,0.3)', borderColor:blue, borderWidth:1, borderRadius:3 },
+        { label:'Actual Cost', data:[D.labor,D.materials,D.hotels,D.consumables,D.diamond,D.fuel,null],
+          backgroundColor:'rgba(0,201,167,0.6)', borderColor:teal, borderWidth:1, borderRadius:3 },
+      ] },
+    options:{ responsive:true, plugins:{ legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:10,font:{size:9}}},
+      tooltip:{callbacks:{label:ctx=>' $'+ctx.parsed.y.toLocaleString()}} },
+      scales:{ x:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9}}},
+        y:{grid:{color:'rgba(30,45,61,0.8)'},ticks:{color:'#5a7a96',font:{size:9},callback:v=>'$'+(v/1000).toFixed(0)+'k'}} } }
+  });
+
+  // Burn Radar
+  destroyChart('burnRadar');
+  const br = document.getElementById('burnRadar');
+  if (br) {
+    const bvals = Object.values(c.burns).map(b=>Math.min(b.pct,110));
+    const blast  = Object.values(c.burns).map(()=>D.billingPct);
+    charts['burnRadar'] = new Chart(br, {
+      type:'radar',
+      data:{ labels:Object.values(c.burns).map(b=>b.label),
+        datasets:[
+          { label:'% Budget Consumed', data:bvals, backgroundColor:'rgba(255,92,92,0.15)', borderColor:danger, borderWidth:1.5, pointBackgroundColor:danger },
+          { label:'Billing % Complete', data:blast, backgroundColor:'rgba(0,201,167,0.1)', borderColor:teal, borderWidth:1.5, borderDash:[4,4], pointBackgroundColor:teal }
+        ] },
+      options:{ responsive:true,
+        scales:{ r:{ min:0, max:110, ticks:{stepSize:25,color:'#5a7a96',font:{size:8},backdropColor:'transparent'},
+          grid:{color:'rgba(30,45,61,0.8)'}, angleLines:{color:'rgba(30,45,61,0.8)'}, pointLabels:{color:'#8aabb8',font:{size:9}} } },
+        plugins:{ legend:{display:true,position:'bottom',labels:{boxWidth:10,padding:10,font:{size:9}}}} }
+    });
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// AI CHAT
+// ════════════════════════════════════════════════════════
+const QUICK_QUESTIONS = [
+  'Summarize the current project health',
+  'Labor is at 70% consumed but billing is only 30% — what does that mean?',
+  'What is our retainage exposure and when do we get it back?',
+  'Where are we most at risk of going over budget?',
+  'What should I review before submitting App #5?',
+  'How does our margin compare to what we estimated?',
+];
+
+function renderQuickButtons() {
+  const el = document.getElementById('quickButtons');
+  if (!el) return;
+  el.innerHTML = QUICK_QUESTIONS.map((q,i) => `
+    <button class="btn btn-secondary" style="text-align:left;font-size:9px;padding:8px 12px;justify-content:flex-start;text-transform:none;letter-spacing:0;line-height:1.4" onclick="quickAsk('${q.replace(/'/g,"\\'")}')">
+      <span style="color:var(--accent3);margin-right:6px">›</span> ${q}
+    </button>`).join('');
+}
+
+function quickAsk(q) {
+  document.getElementById('chatInput').value = q;
+  sendChat();
+  showTab('ai');
+}
+
+function buildSystemPrompt() {
+  const c = calc();
+  const burns = Object.entries(c.burns).map(([k,b]) =>
+    `${b.label}: $${fmt(b.actual)} actual vs $${fmt(b.est)} estimated (${b.pct.toFixed(1)}% consumed, ${b.gap.toFixed(1)}% ahead of billing, status: ${b.status})`
+  ).join('\n');
+  return `You are a construction project financial analyst assistant for Applied Flooring, Inc. You have access to the live data for the CCRB (Central Campus Recreation Building) project at the University of Michigan, Ann Arbor.
+
+PROJECT DATA (current):
+- Base Contract: $${fmt(D.contractBase)} (original subcontract with Amalio Corporation)
+- Total Billed QBO: $${fmt(D.revenue)} (includes base AIA + T&M CRs)
+- Gross Profit: $${fmt(c.grossProfit)} (${c.grossMargin.toFixed(1)}% margin)
+- Net Income: $${fmt(c.grossProfit - D.meals)} 
+- Retainage Held: $${fmt(D.retainageHeld)} (10%, held by Amalio Corp)
+- Base Contract Balance Remaining: $${fmt(c.pconc1Balance)} (PCONC1 only, all others 100%)
+- Billing % Complete: ${D.billingPct.toFixed(1)}%
+- Schedule % Elapsed: ${D.schedPct.toFixed(1)}%
+
+AIA STATUS (App #5 in progress):
+- PCONC1: $${fmt(D.pconc1Prev)} billed of $${fmt(D.pconc1Sched)} scheduled ($${fmt(c.pconc1Balance)} remaining)
+- PCONC2: $298,815 — 100% complete
+- Proguard Duracover: $34,182 — 100% complete
+- Prior certificates paid: $${fmt(D.priorCerts)}
+
+T&M CHANGE ORDERS (separate from AIA, UofM Quotation Sheet format):
+- CR #1 Concrete Grinding: $58,001.90 (approved)
+- CR #2 Gap Infill: $17,685.67 (approved)  
+- CR #3 Laticrete NXT White: $10,532.16 (approved)
+- CR #4: New scope, ${D.tmDaysComplete} of ${D.tmDaysTotal} days complete, pending submission
+
+COST BURN RATES vs ESTIMATES:
+${burns}
+
+ALERT THRESHOLDS: Yellow at 20% gap between cost burn % and billing %, Red at 35% gap.
+
+PAY APP HISTORY: App 1 (Jun 25): $3,150 | App 2 (Sep 25): $242,100 | App 3 (Nov 25): $123,689 | App 4 (Dec 25): $46,015 | App 5 (Mar 26): ~$19,634 est.
+
+Be specific, use the actual numbers, and flag risks clearly. Keep responses concise and actionable. When something looks off, say so directly. Use dollar amounts and percentages from the data above.`;
+}
+
+let chatHistory = [];
+
+function addMessage(role, content) {
+  chatHistory.push({ role, content });
+  const el = document.getElementById('chatMessages');
+  if (!el) return;
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  div.innerHTML = `
+    <div class="msg-avatar">${role==='assistant'?'AI':'YOU'}</div>
+    <div class="msg-bubble">${content.replace(/\n/g,'<br>')}</div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+function addTyping() {
+  const el = document.getElementById('chatMessages');
+  if (!el) return null;
+  const div = document.createElement('div');
+  div.className = 'msg assistant';
+  div.id = 'typingIndicator';
+  div.innerHTML = `<div class="msg-avatar">AI</div><div class="msg-bubble"><div class="typing-dots"><span></span><span></span><span></span></div></div>`;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+  return div;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  if (!input) return;
+  const msg = input.value.trim();
+  if (!msg) return;
+  input.value = '';
+
+  addMessage('user', msg);
+  const typing = addTyping();
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: buildSystemPrompt(),
+        messages: [...chatHistory.slice(-8).filter(m=>m.role!=='system')]
+      })
+    });
+    const data = await response.json();
+    if (typing) typing.remove();
+    const reply = data.content?.[0]?.text || 'Unable to get a response. Please try again.';
+    addMessage('assistant', reply);
+  } catch (e) {
+    if (typing) typing.remove();
+    addMessage('assistant', 'Connection error. Make sure you\'re accessing this from Claude.ai where the API is available.');
+  }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey && document.activeElement?.id === 'chatInput') {
+    e.preventDefault();
+    sendChat();
+  }
+});
+
+// Initial AI greeting
+function initChat() {
+  const c = calc();
+  const flags = Object.values(c.burns).filter(b=>b.status!=='ok');
+  let greeting = `Hello! I'm monitoring the CCRB project in real time. Here's the current snapshot:\n\n`;
+  greeting += `📊 **Billing**: ${D.billingPct.toFixed(1)}% complete — $${fmt(D.revenue)} billed total (base + T&M)\n`;
+  greeting += `💰 **Margin**: ${c.grossMargin.toFixed(1)}% gross margin — $${fmt(c.grossProfit)} gross profit\n`;
+  greeting += `🔒 **Retainage**: $${fmt(D.retainageHeld)} held by Amalio Corp\n`;
+  if (flags.length > 0) {
+    greeting += `\n⚠️ **${flags.length} burn rate flag${flags.length>1?'s':''} active**: ${flags.map(b=>b.label).join(', ')} running ahead of billing.\n`;
+  } else {
+    greeting += `\n✅ **No burn rate alerts** — all cost categories tracking within expectations.\n`;
+  }
+  greeting += `\nAsk me anything about this project — burn rate, billing gaps, retainage, T&M status, or what to watch.`;
+  addMessage('assistant', greeting);
+}
+
+// ════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════════════════════════
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => {
+    const names = ['overview','burnrate','billing','tm','profit','ai','update'];
+    t.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('tab-' + name);
+  if (panel) panel.classList.add('active');
+  // Render charts lazily when tabs open
+  if (name === 'billing') { destroyChart('billingChart2'); destroyChart('periodChart'); renderCharts(); }
+  if (name === 'profit')  { destroyChart('profitChart'); destroyChart('marginChart'); renderCharts(); }
+  if (name === 'tm')      { destroyChart('tmChart'); renderCharts(); }
+  if (name === 'burnrate'){ destroyChart('burnRadar'); renderCharts(); }
+}
+
+// ════════════════════════════════════════════════════════
+// REFRESH ALL
+// ════════════════════════════════════════════════════════
+function refreshAll() {
+  renderKPIs();
+  renderAlerts();
+  renderSOV();
+  renderMilestones();
+  renderBurnBars();
+  renderBurnTable();
+  renderAppTable();
+  renderCRCards();
+  renderQuickButtons();
+  Object.keys(charts).forEach(destroyChart);
+  renderCharts();
+}
+
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  return Math.round(n).toLocaleString('en-US');
+}
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+loadSaved();
+refreshAll();
+initChat();
+document.getElementById('lastUpdated').textContent = 'Last updated: ' + D.lastUpdated;
+</script>
+</body>
+</html>
